@@ -33,9 +33,14 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    // IMPORTANT: Avoid calling any complex logic here that might throw or fail
+    // getUser() is necessary to refresh the session but we should handle it gracefully
+    try {
+        await supabase.auth.getUser()
+    } catch (e) {
+        // Log errors but don't crash the proxy
+        console.error('Session refresh error:', e)
+    }
 
     return response
 }
