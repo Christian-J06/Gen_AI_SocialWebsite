@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowBigUp, ArrowBigDown, MessageSquare } from 'lucide-react'
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Flame, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { clsx } from 'clsx'
 import { votePost } from '@/app/actions'
@@ -9,6 +9,8 @@ import { votePost } from '@/app/actions'
 export function Post({ post, currentUserId }: { post: any; currentUserId?: string }) {
     const [optimisticVote, setOptimisticVote] = useState(post.user_vote || null)
     const [score, setScore] = useState(post.score || 0)
+    const [roast, setRoast] = useState<string | null>(null)
+    const [isRoasting, setIsRoasting] = useState(false)
 
     const handleVote = async (type: 'up' | 'down') => {
         if (!currentUserId) return // Redirect to login?
@@ -34,6 +36,32 @@ export function Post({ post, currentUserId }: { post: any; currentUserId?: strin
             // Revert
             setOptimisticVote(previousVote)
             setScore(previousScore)
+        }
+    }
+
+    const handleRoast = async () => {
+        if (isRoasting) return
+        setIsRoasting(true)
+        setRoast(null)
+
+        try {
+            const response = await fetch('/api/roast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: post.content }),
+            })
+
+            const data = await response.json()
+            if (data.roast) {
+                setRoast(data.roast)
+            } else {
+                setRoast("Even the AI is speechless at this take.")
+            }
+        } catch (error) {
+            console.error("Roasting error:", error)
+            setRoast("The roast was too hot for the server to handle.")
+        } finally {
+            setIsRoasting(false)
         }
     }
 
@@ -87,7 +115,42 @@ export function Post({ post, currentUserId }: { post: any; currentUserId?: strin
                             <MessageSquare className="h-4 w-4" />
                             Comments
                         </button>
+                        <button
+                            onClick={handleRoast}
+                            disabled={isRoasting}
+                            className={clsx(
+                                "flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-medium transition-all",
+                                isRoasting ? "bg-orange-500/20 text-orange-300" : "text-zinc-400 hover:bg-orange-500/10 hover:text-orange-400"
+                            )}
+                        >
+                            {isRoasting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Flame className="h-4 w-4" />
+                            )}
+                            Roast My Take
+                        </button>
                     </div>
+
+                    {roast && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="mt-4 rounded-xl bg-orange-500/10 border border-orange-500/20 p-4"
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className="mt-1 rounded-full bg-orange-500/20 p-1">
+                                    <Flame className="h-3 w-3 text-orange-500" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-orange-400 mb-1">AI Roast</p>
+                                    <p className="text-sm italic text-zinc-300 leading-relaxed">
+                                        "{roast}"
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
                 </div>
             </div>
         </motion.div>
